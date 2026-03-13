@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime as _dt
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .http import AnglesHttpClient
@@ -17,14 +16,29 @@ from .requests import (
 
 
 class AnglesReporter:
-    """High-level reporter mirroring `AnglesReporterClass` from the JS client."""
+    """High-level reporter mirroring `AnglesReporterClass` from the JS client.
+
+    The module-level ``angles_reporter`` object remains available as a convenience singleton,
+    but ``AnglesReporter`` itself is now safe to instantiate directly. This allows callers to
+    maintain isolated build/execution state when they need more than one live reporter.
+    """
 
     _instance: Optional["AnglesReporter"] = None
 
-    def __init__(self) -> None:
-        if AnglesReporter._instance is not None:
-            raise RuntimeError("Use AnglesReporter.get_instance() instead of instantiating directly.")
-        self.http = AnglesHttpClient()
+    def __init__(
+        self,
+        *,
+        base_url: Optional[str] = None,
+        timeout_s: float = 10.0,
+        session: Any = None,
+        default_headers: Optional[Dict[str, str]] = None,
+    ) -> None:
+        self.http = AnglesHttpClient(
+            base_url=base_url or AnglesHttpClient.base_url,
+            timeout_s=timeout_s,
+            session=session,
+            default_headers=default_headers,
+        )
         self._instantiate_clients()
 
         self.current_build: Optional[Dict[str, Any]] = None
@@ -41,17 +55,27 @@ class AnglesReporter:
     @classmethod
     def get_instance(cls) -> "AnglesReporter":
         if cls._instance is None:
-            cls._instance = AnglesReporter()
+            cls._instance = cls()
         return cls._instance
 
     @classmethod
     def get_instance_with_base_url(cls, base_url: str) -> "AnglesReporter":
-        inst = cls.get_instance()
-        inst.set_base_url(base_url)
-        return inst
+        """Backward-compatible convenience helper.
+
+        Returns a new reporter bound to ``base_url`` so callers do not share mutable build/test
+        state accidentally. Use ``get_instance()`` or the module-level ``angles_reporter`` when a
+        process-wide convenience singleton is actually desired.
+        """
+        return cls(base_url=base_url)
 
     def set_base_url(self, base_url: str) -> None:
         self.http.set_base_url(base_url)
+
+    def reset_state(self) -> None:
+        """Clear tracked build/execution/action state without recreating the HTTP client."""
+        self.current_build = None
+        self.current_execution = None
+        self.current_action = None
 
     def set_current_build(self, build_id: str) -> None:
         self.current_build = self.current_build or {}

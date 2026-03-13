@@ -11,6 +11,8 @@ pip install -e .
 
 ## Quick usage (singleton reporter)
 
+Use `angles_reporter` when you want one simple process-wide reporter. This mirrors the original JS-style convenience usage and remains backward compatible.
+
 ```python
 from angles_python_client import angles_reporter
 from angles_python_client.models import Artifact, ScreenshotPlatform, Platform
@@ -54,6 +56,36 @@ angles_reporter.fail_step("Assertion", expected="true", actual="false", info="Ju
 
 execution = angles_reporter.save_test()
 ```
+
+
+## Independent reporters for isolated state
+
+Create `AnglesReporter(...)` instances directly when you need more than one live reporter at once, for example when publishing multiple builds or environments in parallel. Each instance keeps its own `current_build`, `current_execution`, and `current_action` state.
+
+```python
+from angles_python_client import AnglesReporter
+
+reporter_gib = AnglesReporter(base_url="https://angles-api.example/rest/api/v1.0/")
+reporter_games_dev = AnglesReporter(base_url="https://angles-api.example/rest/api/v1.0/")
+
+reporter_gib.start_build(
+    name="[suite] gib",
+    team="sre-agent",
+    environment="live-gib",
+    component="saucelabs",
+)
+
+reporter_games_dev.start_build(
+    name="[suite] games-dev",
+    team="sre-agent",
+    environment="games-dev",
+    component="saucelabs",
+)
+```
+
+`AnglesReporter.get_instance()` and the module-level `angles_reporter` still return the shared convenience singleton.
+
+`AnglesReporter.get_instance_with_base_url(...)` is kept for backward compatibility, but it now returns a fresh reporter bound to that base URL instead of reusing shared mutable reporting state.
 
 ## Direct requests usage
 
