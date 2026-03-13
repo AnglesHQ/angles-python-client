@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "angles-python-client-sarm333"
+name = "angles-python-client"
 version = "1.0.4"
 description = "Python client for the Angles Dashboard API"
 readme = "README.md"
@@ -14,8 +14,8 @@ dependencies = ["requests>=2.31.0"]
 
 [project.urls]
 Homepage = "https://angleshq.github.io/"
-Repository = "https://github.com/sarm333/angles-python-client"
-Issues = "https://github.com/sarm333/angles-python-client/issues"
+Repository = "https://github.com/AnglesHQ/angles-python-client"
+Issues = "https://github.com/AnglesHQ/angles-python-client/issues"
 
 [tool.setuptools]
 package-dir = {"" = "."}
