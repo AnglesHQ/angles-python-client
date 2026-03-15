@@ -1,0 +1,100 @@
+name: Release on main/master (tag + publish + post-bump)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+concurrency:
+  group: release-on-default-branch
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Prevent infinite loop from our own post-release bump commit
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # push tags + commit post-bump
+      id-token: write      # Trusted Publishing to PyPI
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tooling
+        run: python -m pip install -U pip build bump2version
+
+      - name: Read current version from pyproject.toml
+        id: ver
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sys
+          try:
+            import tomllib
+          except Exception:
+            import tomli as tomllib  # type: ignore
+          from pathlib import Path
+          data = tomllib.loads(Path("pyproject.toml").read_text("utf-8"))
+          v = data["project"]["version"]
+          print(f"version={v}")
+          PY
+
+      - name: Export version env
+        shell: bash
+        run: |
+          VERSION=$(python - <<'PY'
+          try:
+            import tomllib
+          except Exception:
+            import tomli as tomllib  # type: ignore
+          from pathlib import Path
+          data = tomllib.loads(Path("pyproject.toml").read_text("utf-8"))
+          print(data["project"]["version"])
+          PY
+          )
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+
+      - name: Check if release tag already exists
+        id: tagcheck
+        shell: bash
+        run: |
+          git fetch --tags
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop if this version is already released
+        if: ${{ steps.tagcheck.outputs.exists == 'true' }}
+        run: |
+          echo "Tag v${VERSION} already exists. Nothing to release."
+          exit 0
+
+      - name: Create and push release tag
+        run: |
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Post-release bump (patch) and push back to default branch
+        run: |
+          bump2version --no-tag --current-version "${VERSION}" --message "chore: post-release bump [skip release]" patch
+          git push
