@@ -1,7 +1,6 @@
 # angles-python-client
 
-A small Python client for the **Angles Dashboard** REST API, designed to be a **like-for-like** port of
-`angles-javascript-client`.
+A small Python client for the **Angles Dashboard** REST API, which allows python test frameworks to publish their automated test results.
 
 ## Install (local / editable)
 
