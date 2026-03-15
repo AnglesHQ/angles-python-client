@@ -10,7 +10,7 @@ pip install -e .
 
 ## Quick usage (singleton reporter)
 
-Use `angles_reporter` when you want one simple process-wide reporter. This mirrors the original JS-style convenience usage and remains backward compatible.
+Use `angles_reporter` when you want one simple process-wide reporter.
 
 ```python
 from angles_python_client import angles_reporter
