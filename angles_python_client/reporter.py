@@ -32,12 +32,14 @@ class AnglesReporter:
         timeout_s: float = 10.0,
         session: Any = None,
         default_headers: Optional[Dict[str, str]] = None,
+        api_key: Optional[str] = None,
     ) -> None:
         self.http = AnglesHttpClient(
             base_url=base_url or AnglesHttpClient.base_url,
             timeout_s=timeout_s,
             session=session,
             default_headers=default_headers,
+            api_key=api_key,
         )
         self._instantiate_clients()
 
@@ -70,6 +72,9 @@ class AnglesReporter:
 
     def set_base_url(self, base_url: str) -> None:
         self.http.set_base_url(base_url)
+
+    def set_api_key(self, api_key: str) -> None:
+        self.http.set_api_key(api_key)
 
     def reset_state(self) -> None:
         """Clear tracked build/execution/action state without recreating the HTTP client."""
