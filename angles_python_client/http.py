@@ -16,6 +16,7 @@ class AnglesHttpClient:
     timeout_s: float = 10.0
     session: Optional[requests.Session] = None
     default_headers: Optional[Dict[str, str]] = None
+    api_key: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.session is None:
@@ -25,11 +26,22 @@ class AnglesHttpClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             }
+        if self.api_key:
+            self.default_headers["x-api-key"] = self.api_key
 
     def set_base_url(self, base_url: str) -> None:
         if not base_url.endswith("/"):
             base_url += "/"
         self.base_url = base_url
+
+    def set_api_key(self, api_key: str) -> None:
+        """Configures the api key to be sent as the 'x-api-key' header on all requests.
+
+        Generate a token via the Angles UI/API (POST /users/:userId/tokens) and pass the
+        raw token string here.
+        """
+        self.api_key = api_key
+        self.default_headers["x-api-key"] = api_key
 
     def _full_url(self, path_or_url: str) -> str:
         # Support absolute URLs (used by MetricRequests).
