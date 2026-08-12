@@ -15,6 +15,10 @@ from .find_image import (
     ImageFindMatch,
     ImageFindResponse,
 )
+from .compare import (
+    CompareOptions,
+    DiffRegion,
+)
 
 from .enums import ExecutionStates, StepStates, GroupingPeriods
 
