@@ -228,6 +228,53 @@ class ScreenshotRequests(BaseRequests):
     def get_baseline_compare(self, screenshot_id: str) -> Any:
         return self.get(f"screenshot/{screenshot_id}/baseline/compare/")
 
+    @staticmethod
+    def _find_image_params(options: Any) -> Optional[Dict[str, Any]]:
+        """Converts FindImageOptions (dataclass or plain dict) to query parameters."""
+        if options is None:
+            return None
+        payload = jsonable(options)
+        params = {key: value for key, value in payload.items() if value is not None}
+        if "grayscale" in params:
+            params["grayscale"] = str(bool(params["grayscale"])).lower()
+        return params or None
+
+    def find_image_in_screenshot(self, screenshot_id: str, template_screenshot_id: str, options: Any = None) -> Any:
+        """Finds a stored screenshot (the template) within another stored screenshot
+        using multi-scale template matching, and returns the matched region(s)."""
+        return self.get(
+            f"screenshot/{screenshot_id}/find/{template_screenshot_id}",
+            params=self._find_image_params(options),
+        )
+
+    def find_image_in_screenshot_image(self, screenshot_id: str, template_screenshot_id: str, options: Any = None) -> bytes:
+        """Same search as find_image_in_screenshot, but returns the screenshot image
+        with the matched region(s) outlined."""
+        return self.get(
+            f"screenshot/{screenshot_id}/find/{template_screenshot_id}/image",
+            params=self._find_image_params(options),
+            response_type="bytes",
+        )
+
+    def find_uploaded_image_in_screenshot(self, screenshot_id: str, template_file_path: str, options: Any = None) -> Any:
+        """Finds a local template image file within a stored screenshot using multi-scale
+        template matching. The template is uploaded with the request and not stored."""
+        import os
+
+        full_path = os.path.abspath(template_file_path)
+        file_name = os.path.basename(full_path)
+        with open(full_path, "rb") as f:
+            files = {"template": (file_name, f)}
+            headers = {"Accept": "application/json"}
+            resp = self.http.request(
+                "POST",
+                f"screenshot/{screenshot_id}/find",
+                params=self._find_image_params(options),
+                files=files,
+                headers=headers,
+            )
+            return resp.json() if resp.content else None
+
 
 class BaselineRequests(BaseRequests):
     def set_baseline(self, screenshot: Dict[str, Any]) -> Any:

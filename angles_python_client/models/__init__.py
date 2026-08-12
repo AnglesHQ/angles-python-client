@@ -10,6 +10,11 @@ from .execution import Execution
 from .action import Action
 from .step import Step
 from .versions import Versions
+from .find_image import (
+    FindImageOptions,
+    ImageFindMatch,
+    ImageFindResponse,
+)
 
 from .enums import ExecutionStates, StepStates, GroupingPeriods
 
