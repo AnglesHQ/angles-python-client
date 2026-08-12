@@ -226,15 +226,47 @@ class ScreenshotRequests(BaseRequests):
             params["numberOfImagesToCompare"] = number_of_images_to_compare
         return self.get(path, params=params or None)
 
-    def get_baseline_compare_image(self, screenshot_id: str, cache: bool = False) -> bytes:
+    @staticmethod
+    def _compare_params(options: Any) -> Dict[str, Any]:
+        """Converts CompareOptions (dataclass or plain dict) to query parameters."""
+        if options is None:
+            return {}
+        payload = jsonable(options)
+        params = {key: value for key, value in payload.items() if value is not None}
+        if "regions" in params:
+            params["regions"] = str(bool(params["regions"])).lower()
+        return params
+
+    def compare_screenshots(self, screenshot_id: str, screenshot_compare_id: str, options: Any = None) -> Any:
+        """Compares two stored screenshots and returns the comparison statistics.
+        options: CompareOptions (algorithm/threshold/regions)."""
         return self.get(
-            "screenshot/{}/baseline/compare/image/".format(screenshot_id),
-            params={"useCache": str(bool(cache)).lower()},
+            f"screenshot/{screenshot_id}/compare/{screenshot_compare_id}",
+            params=self._compare_params(options) or None,
+        )
+
+    def compare_screenshots_image(self, screenshot_id: str, screenshot_compare_id: str, cache: bool = False, options: Any = None) -> bytes:
+        """Compares two stored screenshots and returns the diff image bytes."""
+        params = {"useCache": str(bool(cache)).lower(), **self._compare_params(options)}
+        return self.get(
+            f"screenshot/{screenshot_id}/compare/{screenshot_compare_id}/image",
+            params=params,
             response_type="bytes",
         )
 
-    def get_baseline_compare(self, screenshot_id: str) -> Any:
-        return self.get(f"screenshot/{screenshot_id}/baseline/compare/")
+    def get_baseline_compare_image(self, screenshot_id: str, cache: bool = False, options: Any = None) -> bytes:
+        params = {"useCache": str(bool(cache)).lower(), **self._compare_params(options)}
+        return self.get(
+            "screenshot/{}/baseline/compare/image/".format(screenshot_id),
+            params=params,
+            response_type="bytes",
+        )
+
+    def get_baseline_compare(self, screenshot_id: str, options: Any = None) -> Any:
+        return self.get(
+            f"screenshot/{screenshot_id}/baseline/compare/",
+            params=self._compare_params(options) or None,
+        )
 
     @staticmethod
     def _find_image_params(options: Any) -> Optional[Dict[str, Any]]:
