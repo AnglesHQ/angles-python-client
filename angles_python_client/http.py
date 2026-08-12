@@ -66,6 +66,10 @@ class AnglesHttpClient:
         merged_headers: Dict[str, str] = dict(self.default_headers or {})
         if headers:
             merged_headers.update(headers)
+        if files is not None:
+            # An explicit Content-Type would override the multipart boundary requests
+            # generates for file uploads, so the body would be unreadable by the server.
+            merged_headers.pop("Content-Type", None)
 
         try:
             resp = self.session.request(
