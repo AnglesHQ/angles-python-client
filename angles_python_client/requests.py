@@ -133,6 +133,14 @@ class BuildRequests(BaseRequests):
     def add_artifacts(self, build_id: str, artifacts: List[Any]) -> Any:
         return self.put(f"build/{build_id}/artifacts", {"artifacts": artifacts})
 
+    def add_executions(self, build_id: str, executions: List[Any]) -> Any:
+        """Stores all the given test executions against an existing build in a single call.
+
+        Executions are grouped into suites by their suite name and the build metrics are
+        recalculated by the Angles API.
+        """
+        return self.put(f"build/{build_id}/executions", {"executions": executions})
+
 
 class ExecutionRequests(BaseRequests):
     def save_execution(self, save_execution_request: Any) -> Any:

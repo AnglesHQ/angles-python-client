@@ -46,6 +46,8 @@ class AnglesReporter:
         self.current_build: Optional[Dict[str, Any]] = None
         self.current_execution: Optional[CreateExecution] = None
         self.current_action: Optional[Action] = None
+        self.batch_mode: bool = False
+        self._batched_executions: List[CreateExecution] = []
 
     def _instantiate_clients(self) -> None:
         self.teams = TeamRequests(self.http)
@@ -76,11 +78,21 @@ class AnglesReporter:
     def set_api_key(self, api_key: str) -> None:
         self.http.set_api_key(api_key)
 
+    def set_batch_mode(self, batch_mode: bool) -> None:
+        """When batch mode is enabled, save_test() no longer sends each test execution to the
+        Angles API individually, but stores them in the reporter instead. Once all tests are
+        done, call save_all_tests() to store all the executions against the current build in a
+        single request. Screenshots are always uploaded individually (they need the build id),
+        so they can still be saved as the tests run.
+        """
+        self.batch_mode = batch_mode
+
     def reset_state(self) -> None:
         """Clear tracked build/execution/action state without recreating the HTTP client."""
         self.current_build = None
         self.current_execution = None
         self.current_action = None
+        self._batched_executions = []
 
     def set_current_build(self, build_id: str) -> None:
         self.current_build = self.current_build or {}
@@ -133,7 +145,29 @@ class AnglesReporter:
     def save_test(self) -> Any:
         if not self.current_execution:
             raise RuntimeError("No current test started. Call start_test() first.")
+        if self.batch_mode:
+            self._batched_executions.append(self.current_execution)
+            return None
         return self.executions.save_execution(self.current_execution)
+
+    def save_all_tests(self) -> Any:
+        """Stores all the test executions gathered by save_test() whilst in batch mode against
+        the current build in a single request. Call this once at the end of the test run.
+        """
+        if not self._batched_executions:
+            return self.current_build
+        if not self.current_build or not self.current_build.get("_id"):
+            raise RuntimeError("No current build set. Call start_build() or set_current_build() first.")
+        executions = self._batched_executions
+        self._batched_executions = []
+        try:
+            updated_build = self.builds.add_executions(self.current_build["_id"], executions)
+        except Exception:
+            # put the executions back so a retry of save_all_tests() doesn't lose them
+            self._batched_executions = executions + self._batched_executions
+            raise
+        self.current_build = updated_build
+        return updated_build
 
     # --- screenshots ---
     def save_screenshot(self, file_path: str, view: str, tags: Optional[List[str]] = None) -> Any:

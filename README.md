@@ -57,6 +57,22 @@ execution = angles_reporter.save_test()
 ```
 
 
+## Batch mode
+
+By default every call to `save_test()` sends the test execution to the Angles API straight away. If you'd rather send the whole test run in a single request at the end (e.g. for large runs), you can enable batch mode. The build is still created up-front and screenshots are still uploaded individually as the tests run (they need the build id), but the executions are gathered by the reporter until you call `save_all_tests()`.
+
+```python
+angles_reporter.set_batch_mode(True)
+angles_reporter.start_build(name="TestRunName", team="Team", environment="Environment", component="Component")
+
+# run your tests as usual: start_test(), save_screenshot(), pass_step()/fail_step() and save_test()
+# save_test() now stores the executions in the reporter rather than sending them.
+
+# once all tests are done, store all the executions against the build in one request.
+updated_build = angles_reporter.save_all_tests()
+```
+
+
 ## Independent reporters for isolated state
 
 Create `AnglesReporter(...)` instances directly when you need more than one live reporter at once, for example when publishing multiple builds or environments in parallel. Each instance keeps its own `current_build`, `current_execution`, and `current_action` state.
