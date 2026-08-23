@@ -8,6 +8,7 @@ Public API mirrors `angles-javascript-client`:
 """
 
 from .http import AnglesHttpClient
+from .models.enums import ExecutionTypes
 from .reporter import AnglesReporter, angles_reporter
 from .requests import (
     BuildRequests,
@@ -22,6 +23,7 @@ from .requests import (
 
 __all__ = [
     "AnglesHttpClient",
+    "ExecutionTypes",
     "AnglesReporter",
     "angles_reporter",
     "BuildRequests",

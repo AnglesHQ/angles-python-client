@@ -20,7 +20,7 @@ from .compare import (
     DiffRegion,
 )
 
-from .enums import ExecutionStates, StepStates, GroupingPeriods
+from .enums import ExecutionStates, ExecutionTypes, StepStates, GroupingPeriods
 
 from .requests import (
     CreateBuild,
@@ -56,6 +56,7 @@ __all__ = [
     "Step",
     "Versions",
     "ExecutionStates",
+    "ExecutionTypes",
     "StepStates",
     "GroupingPeriods",
     "CreateBuild",

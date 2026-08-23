@@ -7,8 +7,15 @@ from urllib.parse import urlencode
 
 from ._serialize import jsonable, json_dumps
 from .http import AnglesHttpClient
-from .models.enums import GroupingPeriods
+from .models.enums import ExecutionTypes, GroupingPeriods
 
+
+
+def _execution_type_param(execution_type: Optional[ExecutionTypes]) -> Optional[str]:
+    """Normalises an ExecutionTypes member (or a plain string) to its wire value."""
+    if execution_type is None:
+        return None
+    return execution_type.value if hasattr(execution_type, "value") else str(execution_type)
 
 class BaseRequests:
     def __init__(self, http: AnglesHttpClient):
@@ -77,21 +84,27 @@ class BuildRequests(BaseRequests):
     def create_build(self, request: Any) -> Any:
         return self.post("build", request)
 
-    def get_builds(self, team_id: str, build_ids: Optional[List[str]] = None, return_execution_details: bool = False) -> Any:
+    def get_builds(self, team_id: str, build_ids: Optional[List[str]] = None, return_execution_details: bool = False, execution_type: Optional[ExecutionTypes] = None) -> Any:
         # matches JS: /build?teamId=...&buildIds=...&returnExecutionDetails=...
         params: Dict[str, Any] = {"teamId": team_id}
         if build_ids:
             params["buildIds"] = ",".join(build_ids)
         if return_execution_details:
             params["returnExecutionDetails"] = "true"
+        execution_type_value = _execution_type_param(execution_type)
+        if execution_type_value:
+            params["executionType"] = execution_type_value
         return self.get("build", params=params)
 
-    def get_builds_with_filters(self, team_id: str, filter_environments: Optional[List[str]] = None, filter_components: Optional[List[str]] = None, skip: int = 0, limit: int = 50) -> Any:
+    def get_builds_with_filters(self, team_id: str, filter_environments: Optional[List[str]] = None, filter_components: Optional[List[str]] = None, skip: int = 0, limit: int = 50, execution_type: Optional[ExecutionTypes] = None) -> Any:
         params: Dict[str, Any] = {"teamId": team_id, "skip": skip, "limit": limit}
         if filter_environments:
             params["environmentIds"] = ",".join(filter_environments)
         if filter_components:
             params["componentIds"] = ",".join(filter_components)
+        execution_type_value = _execution_type_param(execution_type)
+        if execution_type_value:
+            params["executionType"] = execution_type_value
         return self.get("build", params=params)
 
     def get_builds_with_date_filters(
@@ -103,6 +116,7 @@ class BuildRequests(BaseRequests):
         limit: int = 50,
         from_date: Optional[_dt.date] = None,
         to_date: Optional[_dt.date] = None,
+        execution_type: Optional[ExecutionTypes] = None,
     ) -> Any:
         params: Dict[str, Any] = {"teamId": team_id, "skip": skip, "limit": limit}
         if from_date:
@@ -113,6 +127,9 @@ class BuildRequests(BaseRequests):
             params["environmentIds"] = ",".join(filter_environments)
         if filter_components:
             params["componentIds"] = ",".join(filter_components)
+        execution_type_value = _execution_type_param(execution_type)
+        if execution_type_value:
+            params["executionType"] = execution_type_value
         return self.get("build", params=params)
 
     def delete_builds(self, team_id: str, age_in_days: int) -> Any:
@@ -363,6 +380,7 @@ class MetricRequests(BaseRequests):
         from_date: Optional[_dt.date] = None,
         to_date: Optional[_dt.date] = None,
         grouping_period: Optional[GroupingPeriods] = None,
+        execution_type: Optional[ExecutionTypes] = None,
     ) -> Any:
         params: Dict[str, Any] = {"teamId": team_id}
         if component_id:
@@ -373,6 +391,9 @@ class MetricRequests(BaseRequests):
             params["toDate"] = to_date.isoformat()
         if grouping_period:
             params["groupingPeriod"] = grouping_period.value if hasattr(grouping_period, "value") else str(grouping_period)
+        execution_type_value = _execution_type_param(execution_type)
+        if execution_type_value:
+            params["executionType"] = execution_type_value
         # JS uses an absolute URL via new URL(baseURL + '/metrics/phase?...')
         # We'll just pass a relative path + params; client will build URL.
         return self.get("metrics/phase", params=params)

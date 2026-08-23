@@ -50,6 +50,9 @@ class Period:
     result: Optional[Dict[str, Any]] = None
     buildCount: Optional[int] = None
     phases: Optional[List[Any]] = None
+    #: {"automated": n, "manual": n} - counts every execution in the period, so a
+    #: stacked chart built from it matches result["TOTAL"].
+    executionTypeBreakdown: Optional[Dict[str, int]] = None
 
 
 @dataclass
@@ -58,6 +61,8 @@ class PhaseMetrics:
     fromDate: Optional[_dt.date] = None
     groupingPeriod: Optional[str] = None
     periods: Optional[List[Period]] = None
+    #: Echoes the requested filter; absent when both types are included.
+    executionType: Optional[str] = None
 
 
 @dataclass

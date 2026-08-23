@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .artifact import Artifact
 from .environment import Environment
-from .enums import ExecutionStates
+from .enums import ExecutionStates, ExecutionTypes
 from .team import Team
 
 
@@ -24,3 +24,5 @@ class Build:
     team: Optional[Team] = None
     component: Optional[str] = None
     suites: Optional[List[Any]] = None
+    #: Server-assigned; "automated" unless this build backs a manual test run.
+    executionType: Optional[ExecutionTypes] = None

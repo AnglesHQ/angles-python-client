@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime as _dt
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
 from .enums import StepStates
 
@@ -16,3 +16,5 @@ class Step:
     status: Optional[StepStates] = None
     timestamp: Optional[_dt.datetime] = None
     screenshot: Optional[str] = None
+    #: Attachment ids referenced by a manual step result.
+    attachments: Optional[List[str]] = None
