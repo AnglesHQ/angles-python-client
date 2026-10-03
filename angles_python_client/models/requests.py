@@ -29,6 +29,8 @@ class CreateExecution:
     platforms: Optional[List[Platform]] = None
     tags: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
+    # Ids of files attached to the whole test (see AnglesReporter.attach_file).
+    attachments: Optional[List[str]] = None
 
 
 @dataclass

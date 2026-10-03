@@ -316,6 +316,58 @@ class ScreenshotRequests(BaseRequests):
             return resp.json() if resp.content else None
 
 
+class AttachmentRequests(BaseRequests):
+    """Files an automated test produced: logs, HAR files, videos, traces, HTML snapshots, images.
+
+    The server decides how a file is shown from its extension, so keep the real one:
+    ``.log``/``.txt``, ``.json``, ``.har``, ``.webm``/``.mp4``, ``.zip`` (a Playwright trace
+    when the name contains "trace"), ``.html``/``.htm``, ``.png``/``.jpg``/``.jpeg``/``.gif``/``.webp``.
+    """
+
+    # Videos and traces can be large; the client's default request timeout is for JSON calls.
+    UPLOAD_TIMEOUT_S = 300.0
+
+    def upload_test_attachment(self, build_id: str, file_path: str, file_name: Optional[str] = None) -> Any:
+        """Uploads a file from disk against the build the test is running in."""
+        import os
+
+        full_path = os.path.abspath(file_path)
+        with open(full_path, "rb") as f:
+            return self._upload(build_id, f, file_name or os.path.basename(full_path))
+
+    def upload_test_attachment_data(self, build_id: str, data: Any, file_name: str) -> Any:
+        """Uploads in-memory content (``bytes`` or ``str``). ``file_name``'s extension decides the kind."""
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        return self._upload(build_id, data, file_name)
+
+    def _upload(self, build_id: str, content: Any, file_name: str) -> Any:
+        files = {"attachment": (file_name, content, "application/octet-stream")}
+        resp = self.http.request(
+            "POST",
+            f"build/{build_id}/attachment",
+            files=files,
+            headers={"Accept": "application/json"},
+            timeout_s=self.UPLOAD_TIMEOUT_S,
+        )
+        return resp.json() if resp.content else None
+
+    def get_attachments(self, execution_id: Optional[str] = None, build_id: Optional[str] = None) -> Any:
+        """Lists the files an execution claimed, or everything uploaded against a build."""
+        params: Dict[str, Any] = {}
+        if execution_id:
+            params["executionId"] = execution_id
+        if build_id:
+            params["buildId"] = build_id
+        return self.get("attachment", params=params)
+
+    def get_attachment_file(self, attachment_id: str) -> bytes:
+        return self.get(f"attachment/{attachment_id}/file", response_type="bytes")
+
+    def delete_attachment(self, attachment_id: str) -> Any:
+        return self.delete(f"attachment/{attachment_id}")
+
+
 class BaselineRequests(BaseRequests):
     def set_baseline(self, screenshot: Dict[str, Any]) -> Any:
         view = screenshot.get("view")
