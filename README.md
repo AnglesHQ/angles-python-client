@@ -57,6 +57,28 @@ execution = angles_reporter.save_test()
 ```
 
 
+## Attachments
+
+A test can attach files to its results: console logs, network HAR files, videos, Playwright traces, page HTML snapshots and images. Angles shows each one on the test (or the step) with a viewer that suits it. The file extension decides how it is shown, so keep the real one: `.log`/`.txt`, `.json`, `.har`, `.webm`/`.mp4`, `.zip` (shown as a Playwright trace when the name contains "trace"), `.html`/`.htm`, `.png`/`.jpg`/`.jpeg`/`.gif`/`.webp`. Requires an Angles server with test attachment support.
+
+```python
+angles_reporter.fail_step("Order confirmation", "Order confirmed", "Payment declined", "")
+
+# attach to the step you just reported, e.g. the page as it was when the assertion failed
+angles_reporter.attach_data_to_last_step(page.content(), "page.html")
+angles_reporter.attach_file_to_last_step("artifacts/failure.png")
+
+# attach to the whole test
+angles_reporter.attach_file(page.video.path(), "checkout.webm")
+angles_reporter.attach_file("artifacts/trace.zip")
+angles_reporter.attach_file("artifacts/network.har")
+angles_reporter.attach_data("\n".join(console_lines), "console.log")
+
+angles_reporter.save_test()
+```
+
+Uploads happen straight away (they only need the build id), so this works in batch mode too. A rejected upload (e.g. an unsupported extension) raises `AnglesApiError`.
+
 ## Batch mode
 
 By default every call to `save_test()` sends the test execution to the Angles API straight away. If you'd rather send the whole test run in a single request at the end (e.g. for large runs), you can enable batch mode. The build is still created up-front and screenshots are still uploaded individually as the tests run (they need the build id), but the executions are gathered by the reporter until you call `save_all_tests()`.

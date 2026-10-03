@@ -12,6 +12,7 @@ from .requests import (
     EnvironmentRequests,
     ExecutionRequests,
     ScreenshotRequests,
+    AttachmentRequests,
 )
 
 
@@ -55,6 +56,7 @@ class AnglesReporter:
         self.builds = BuildRequests(self.http)
         self.executions = ExecutionRequests(self.http)
         self.screenshots = ScreenshotRequests(self.http)
+        self.attachments = AttachmentRequests(self.http)
 
     @classmethod
     def get_instance(cls) -> "AnglesReporter":
@@ -196,6 +198,57 @@ class AnglesReporter:
         return self.screenshots.get_baseline_compare(screenshot_id)
 
     # --- steps/actions ---
+    # --- attachments ---
+    def attach_file(self, file_path: str, file_name: Optional[str] = None) -> Dict[str, Any]:
+        """Uploads a file and attaches it to the current test: a video, a Playwright trace,
+        a HAR file, a console log and so on.
+
+        The extension decides how Angles shows it: ``.log``/``.txt``, ``.json``, ``.har``,
+        ``.webm``/``.mp4``, ``.zip`` (a trace when the name contains "trace"), ``.html``/``.htm``
+        or an image. ``file_name`` shows the file under another name (keep the extension).
+        """
+        execution = self._require_execution("attach_file")
+        attachment = self.attachments.upload_test_attachment(self.current_build["_id"], file_path, file_name)
+        execution.attachments = (execution.attachments or []) + [attachment["_id"]]
+        return attachment
+
+    def attach_data(self, data: Any, file_name: str) -> Dict[str, Any]:
+        """Attaches in-memory content (``bytes`` or ``str``) to the current test."""
+        execution = self._require_execution("attach_data")
+        attachment = self.attachments.upload_test_attachment_data(self.current_build["_id"], data, file_name)
+        execution.attachments = (execution.attachments or []) + [attachment["_id"]]
+        return attachment
+
+    def attach_file_to_last_step(self, file_path: str, file_name: Optional[str] = None) -> Dict[str, Any]:
+        """Uploads a file and attaches it to the most recent step, e.g. a screenshot taken
+        when an assertion failed."""
+        step = self._require_last_step("attach_file_to_last_step")
+        attachment = self.attachments.upload_test_attachment(self.current_build["_id"], file_path, file_name)
+        step.attachments = (step.attachments or []) + [attachment["_id"]]
+        return attachment
+
+    def attach_data_to_last_step(self, data: Any, file_name: str) -> Dict[str, Any]:
+        """Attaches in-memory content to the most recent step, e.g.
+        ``attach_data_to_last_step(page.content(), "page.html")`` right after ``fail_step()``."""
+        step = self._require_last_step("attach_data_to_last_step")
+        attachment = self.attachments.upload_test_attachment_data(self.current_build["_id"], data, file_name)
+        step.attachments = (step.attachments or []) + [attachment["_id"]]
+        return attachment
+
+    def _require_execution(self, method: str) -> CreateExecution:
+        if not self.current_build or not self.current_build.get("_id"):
+            raise RuntimeError(f"{method}: no current build set. Call start_build() or set_current_build() first.")
+        if not self.current_execution:
+            raise RuntimeError(f"{method}: no current test started. Call start_test() first.")
+        return self.current_execution
+
+    def _require_last_step(self, method: str) -> Step:
+        self._require_execution(method)
+        steps = self.current_action.steps if self.current_action else None
+        if not steps:
+            raise RuntimeError(f"{method}: add a step (pass_step, fail_step, info, ...) before attaching a file to it.")
+        return steps[-1]
+
     def add_action(self, name: str) -> None:
         self.current_action = Action(name=name, start=_dt.datetime.now(), steps=[])
         if self.current_execution is None:

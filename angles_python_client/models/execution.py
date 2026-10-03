@@ -23,4 +23,5 @@ class Execution:
     platforms: Optional[List[Platform]] = None
     tags: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
+    attachments: Optional[List[str]] = None
     status: Optional[ExecutionStates] = None

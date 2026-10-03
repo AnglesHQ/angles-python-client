@@ -4,7 +4,7 @@ Public API mirrors `angles-javascript-client`:
 
 - A singleton reporter (`angles_reporter`) similar to the JS default export.
 - Request classes: BuildRequests, TeamRequests, EnvironmentRequests, ScreenshotRequests,
-  ExecutionRequests, BaselineRequests, MetricRequests, AnglesRequests.
+  ExecutionRequests, BaselineRequests, MetricRequests, AnglesRequests, AttachmentRequests.
 """
 
 from .http import AnglesHttpClient
@@ -18,6 +18,7 @@ from .requests import (
     BaselineRequests,
     MetricRequests,
     AnglesRequests,
+    AttachmentRequests,
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "BaselineRequests",
     "MetricRequests",
     "AnglesRequests",
+    "AttachmentRequests",
 ]
