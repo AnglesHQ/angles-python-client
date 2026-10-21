@@ -156,6 +156,33 @@ class ExecutionRequests(BaseRequests):
         return self.get(f"execution/{execution_id}/history", params={"skip": skip, "limit": limit})
 
 
+def _image_content_type(f: Any, file_name: str) -> str:
+    """Works out the mime type to send with an uploaded image.
+
+    The server only accepts screenshot/template uploads whose part Content-Type is an image
+    type, and requests sends no per-part type unless given one. The file's leading bytes are
+    checked first (so a misnamed file still goes up correctly), then its extension.
+    """
+    import mimetypes
+
+    header = f.read(12)
+    f.seek(0)
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if header.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if header[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+        return "image/webp"
+    if header.startswith(b"BM"):
+        return "image/bmp"
+    if header[:4] in (b"II*\x00", b"MM\x00*"):
+        return "image/tiff"
+    guessed, _ = mimetypes.guess_type(file_name)
+    return guessed or "application/octet-stream"
+
+
 class ScreenshotRequests(BaseRequests):
     def save_screenshot(self, store_screenshot: Any) -> Any:
         # multipart form-data
@@ -180,7 +207,7 @@ class ScreenshotRequests(BaseRequests):
                     data[k] = v
 
         with open(full_path, "rb") as f:
-            files = {"screenshot": (file_name, f)}
+            files = {"screenshot": (file_name, f, _image_content_type(f, file_name))}
             # IMPORTANT: when using files=..., don't set Content-Type json
             headers = {"Accept": "application/json"}
             resp = self.http.request("POST", "screenshot/", data=data, files=files, headers=headers)
@@ -304,7 +331,7 @@ class ScreenshotRequests(BaseRequests):
         full_path = os.path.abspath(template_file_path)
         file_name = os.path.basename(full_path)
         with open(full_path, "rb") as f:
-            files = {"template": (file_name, f)}
+            files = {"template": (file_name, f, _image_content_type(f, file_name))}
             headers = {"Accept": "application/json"}
             resp = self.http.request(
                 "POST",

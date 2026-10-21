@@ -86,3 +86,71 @@ def test_save_screenshot_multipart_also_drops_json_content_type(tmp_path):
     call = session.calls[0]
     assert "screenshot" in call["files"]
     assert "Content-Type" not in call["headers"]
+
+
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"\x00" * 16
+
+
+def _save_screenshot(tmp_path, name, content):
+    screenshot = tmp_path / name
+    screenshot.write_bytes(content)
+    session = _RecordingSession({"_id": "abc"})
+    ScreenshotRequests(_client(session)).save_screenshot({
+        "buildId": "bbb",
+        "view": "some-view",
+        "timestamp": "2026-01-01T00:00:00Z",
+        "filePath": str(screenshot),
+    })
+    return session.calls[0]["files"]["screenshot"]
+
+
+def test_save_screenshot_sends_image_content_type(tmp_path):
+    # The server rejects screenshot uploads whose part type is not an image type.
+    file_name, _, content_type = _save_screenshot(tmp_path, "screenshot.png", PNG_BYTES)
+    assert file_name == "screenshot.png"
+    assert content_type == "image/png"
+
+
+def test_save_screenshot_content_type_comes_from_the_file_bytes(tmp_path):
+    _, _, content_type = _save_screenshot(tmp_path, "screenshot.png", JPEG_BYTES)
+    assert content_type == "image/jpeg"
+
+    _, _, content_type = _save_screenshot(tmp_path, "screenshot", PNG_BYTES)
+    assert content_type == "image/png"
+
+
+def test_save_screenshot_content_type_falls_back_to_the_extension(tmp_path):
+    _, _, content_type = _save_screenshot(tmp_path, "screenshot.jpg", b"unrecognised")
+    assert content_type == "image/jpeg"
+
+
+def test_save_screenshot_uploads_the_whole_file(tmp_path):
+    # Sniffing the header must not leave the file positioned past it.
+    screenshot = tmp_path / "screenshot.png"
+    screenshot.write_bytes(PNG_BYTES)
+    uploaded = []
+
+    class _ReadingSession(_RecordingSession):
+        def request(self, **kwargs):
+            uploaded.append(kwargs["files"]["screenshot"][1].read())
+            return super().request(**kwargs)
+
+    ScreenshotRequests(_client(_ReadingSession({"_id": "abc"}))).save_screenshot({
+        "buildId": "bbb",
+        "view": "some-view",
+        "timestamp": "2026-01-01T00:00:00Z",
+        "filePath": str(screenshot),
+    })
+
+    assert uploaded == [PNG_BYTES]
+
+
+def test_find_uploaded_image_sends_image_content_type(tmp_path):
+    template = tmp_path / "template.jpeg"
+    template.write_bytes(JPEG_BYTES)
+    session = _RecordingSession()
+
+    ScreenshotRequests(_client(session)).find_uploaded_image_in_screenshot("aaa", str(template))
+
+    assert session.calls[0]["files"]["template"][2] == "image/jpeg"
